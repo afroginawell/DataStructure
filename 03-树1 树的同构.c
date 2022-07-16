@@ -1,115 +1,56 @@
-给定两棵树T1和T2。如果T1可以通过若干次左右孩子互换就变成T2，则我们称两棵树是“同构”的。例如图1给出的两棵树就是同构的，因为我们把其中一棵树的结点A、B、G的左右孩子互换后，就得到另外一棵树。而图2就不是同构的。
-
-现给定两棵树，请你判断它们是否是同构的。
-
-输入格式:
-输入给出2棵二叉树树的信息。对于每棵树，首先在一行中给出一个非负整数N (≤10)，即该树的结点数（此时假设结点从0到N−1编号）；随后N行，第i行对应编号第i个结点，给出该结点中存储的1个英文大写字母、其左孩子结点的编号、右孩子结点的编号。如果孩子结点为空，则在相应位置上给出“-”。给出的数据间用一个空格分隔。注意：题目保证每个结点中存储的字母是不同的。
-
-输出格式:
-如果两棵树是同构的，输出“Yes”，否则输出“No”。
-
-输入样例1（对应图1）：
-8
-A 1 2
-B 3 4
-C 5 -
-D - -
-E 6 -
-G 7 -
-F - -
-H - -
-8
-G - 4
-B 7 6
-F - -
-A 5 1
-H - -
-C 0 -
-D - -
-E 2 -
-输出样例1:
-Yes
-输入样例2（对应图2）：
-8
-B 5 7
-F - -
-A 0 3
-C 6 -
-H - -
-D - -
-G 4 -
-E 1 -
-8
-D 6 -
-B 5 -
-E - -
-H - -
-C 0 2
-G - 3
-F - -
-A 1 4
-输出样例2:
-No
-代码长度限制
-16 KB
-时间限制
-400 ms
-内存限制
-64 MB
-
 #include<stdio.h>
 #include<stdlib.h>
 
-#define MAXSIZE 11;
+#define MAXSIZE 12
 
-typedef struct tree *TreePoint;
-typedef struct tree Tree;
-struct tree{
-    char ch;
-    int right;
+typedef struct Node SeqList;
+struct Node{
+    int data;
     int left;
+    int right;
 };
 
-TreePoint Read(int *len);
+SeqList* Read(int *len,int *cnt);
 void Change(char c, int *a);
-int Map(TreePoint t1,TreePoint t2,int len);
-int Get(TreePoint t1, char ch, int *index, int len);
+void Print(int *result,int cnt);
+int* FindLeaves(SeqList* seq,int len,int cnt);
+SeqList FindHead(SeqList *seq,int len);
 
 int main(){
     
-    // 读取
-    TreePoint t1,t2;
-    int len1,len2;
-    t1 = Read(&len1);
-    t2 = Read(&len2);
-    // 匹配
-    if(len1 != len2){
-        printf("No\n");
-        return 0;
-    }
-    int flag = Map(t1,t2,len1);
-    if(flag == 1){
-        printf("Yes");
-    }else{
-        printf("No");
-    }
+    int len,cnt;
+    // ��ȡ
+    SeqList *seq = Read(&len,&cnt);
+    
+    // ����
+    int *result = FindLeaves(seq,len,cnt);
+    
+    // ���
+    Print(result,cnt);
+    
     return 0;
 }
 
-TreePoint Read(int *len){
+SeqList* Read(int *len,int *cnt){
     int i;
     char c1,c2;
-    TreePoint t;
+    SeqList *seq;
+    
+    *cnt = 0;
     scanf("%d",len);
-    t = (TreePoint)malloc((*len+1)*sizeof(Tree));
-    t[0].ch = '0';	t[0].left = 0;	t[0].right = 0;
+    seq = (SeqList *)malloc((*len+1)*sizeof(SeqList));
+    seq[0].right = 0; seq[0].left = 0; seq[0].data = 0;
     for(i = 1; i <= *len; i++){
-    	scanf("%c",&c1);	// 读换行符 
-        scanf("%c %c %c",&t[i].ch,&c1,&c2);
-        Change(c1,&t[i].left);
-        Change(c2,&t[i].right);
+    	scanf("%c",&c1);	// �����з� 
+        scanf("%c %c",&c1,&c2);
+        Change(c1,&seq[i].left);
+        Change(c2,&seq[i].right);
+        seq[i].data = i;
+        if(seq[i].left == 0 && seq[i].right == 0){
+            *cnt = *cnt + 1;
+        }
     }
-    return t;
+    return seq;
 }
 
 void Change(char c, int *a){
@@ -120,30 +61,72 @@ void Change(char c, int *a){
     }
 }
 
-int Map(TreePoint t1,TreePoint t2,int len){
-    int i,index;
-    
-    for(i = 1; i <= len;i++){
-        if(!Get(t1,t2[i].ch,&index, len)){
-            return 0;   // 表示没找到
+void Print(int *result,int cnt){
+    int i;
+    for(i = 0; i < cnt; i++){
+        printf("%d",result[i]);
+        if(i != cnt - 1){
+            printf(" ");
         }
-		if( (t1[t1[index].left].ch == t2[t2[i].left].ch && t1[t1[index].right].ch == t2[t2[i].right].ch) || (t1[t1[index].right].ch == t2[t2[i].left].ch && t1[t1[index].left].ch == t2[t2[i].right].ch)){
-			continue;
-		}else{
-			return 0;
-		}
     }
-    return 1;
 }
 
-int Get(TreePoint t1, char ch, int *index, int len){
-    int i ;
+int* FindLeaves(SeqList* seq,int len,int cnt){
+    int front,rear, j;
+    int *result;
+    SeqList head, current;
+    SeqList *queue;
     
-    for(i = 1; i <= len; i++){
-        if(t1[i].ch == ch){
-            *index = i;
-            return 1;
+    result = (int *)malloc(cnt * sizeof(int));
+    queue = (SeqList *)malloc(len*sizeof(SeqList));
+    front = -1; rear = -1;
+    
+    head = FindHead(seq,len);
+    printf("%d\n",head.data); 
+    if(head.data == 0){
+        return result;
+    }
+    
+    queue[++rear] = head;
+    j = 0;
+    while(front != rear){
+        current = queue[++front];
+        if(current.left == 0 && current.right == 0){
+            result[j] = current.data - 1;
+            j++;
+        }
+        if(current.left != 0){
+            queue[++rear] = seq[current.left];
+        }
+        if(current.right != 0){
+            queue[++rear] = seq[current.right];
         }
     }
-    return 0;
+    return result;
+}
+
+SeqList FindHead(SeqList *seq,int len){
+    int i, top, rear, front;
+    SeqList *queue;
+    SeqList current;
+    
+    queue = (SeqList *)malloc((len+1)*sizeof(SeqList));
+
+    for(i = 1; i <= len;i++){
+        rear = 0; front = 0;
+        queue[++rear] = seq[i];
+        while(rear != front){
+            current = queue[++front];
+            if(current.left != 0){
+                queue[++rear] = seq[current.left];
+            }
+            if(current.right != 0){
+                queue[++rear] = seq[current.right];
+            }
+        }
+        if(rear == len){
+            return seq[i];
+        }
+    }
+    return seq[0];
 }
